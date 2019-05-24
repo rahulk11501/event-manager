@@ -1,5 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { formatDate, isEmptyObject, validateEvent } from '../helpers/helpers';
+import Pikaday from 'pikaday';
+import 'pikaday/css/pikaday.css';
 
 class EventForm extends React.Component {
   constructor(props) {
@@ -10,61 +13,48 @@ class EventForm extends React.Component {
       errors: {},
     };
 
+    this.dateInput = React.createRef(); 
+
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleInputChange = this.handleInputChange.bind(this);
   }
 
+  componentDidMount() {
+    new Pikaday({
+      field: this.dateInput.current,
+      onSelect: (date) => {
+        const formattedDate = formatDate(date);
+        this.dateInput.current.value = formattedDate;
+        this.updateEvent('event_date', formattedDate);
+      },
+    });
+  } 
   handleSubmit(e) {
     e.preventDefault();
     const { event } = this.state;
-    const errors = this.validateEvent(event);
-    if (!this.isEmptyObject(errors)) {
+    const errors = validateEvent(event);
+
+    if (!isEmptyObject(errors)) {
       this.setState({ errors });
     } else {
-      console.log(event);
+      const { onSubmit } = this.props;
+      onSubmit(event);
     }
   }
 
-  validateEvent(event) {
-    const errors = {};
-
-    if (event.event_type === '') {
-      errors.event_type = 'You must enter an event type';
-    }
-
-    if (event.event_date === '') {
-      errors.event_date = 'You must enter a valid date';
-    }
-
-    if (event.title === '') {
-      errors.title = 'You must enter a title';
-    }
-
-    if (event.speaker === '') {
-      errors.speaker = 'You must enter at least one speaker';
-    }
-
-    if (event.host === '') {
-      errors.host = 'You must enter at least one host';
-    }
-
-    console.log(event);
-    return errors;
-  }
-
-  isEmptyObject(obj) {
-    return Object.keys(obj).length === 0;
-  }
 
   handleInputChange(event) {
     const { target } = event;
     const { name } = target;
     const value = target.type === 'checkbox' ? target.checked : target.value;
+    this.updateEvent(name, value);
+  }
 
+  updateEvent(key, value) {
     this.setState(prevState => ({
       event: {
         ...prevState.event,
-        [name]: value,
+        [key]: value,
       },
     }));
   }
@@ -72,7 +62,7 @@ class EventForm extends React.Component {
   renderErrors() {
     const { errors } = this.state;
 
-    if (this.isEmptyObject(errors)) {
+    if (isEmptyObject(errors)) {
       return null;
     }
 
@@ -113,6 +103,8 @@ class EventForm extends React.Component {
                 id="event_date"
                 name="event_date"
                 onChange={this.handleInputChange}
+                ref={this.dateInput}
+                autoComplete="off"
               />
             </label>
           </div>
@@ -162,6 +154,7 @@ class EventForm extends React.Component {
 
 EventForm.propTypes = {
   event: PropTypes.shape(),
+  onSubmit: PropTypes.func.isRequired,
 };
 
 EventForm.defaultProps = {
